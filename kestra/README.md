@@ -65,6 +65,21 @@
                                               └─────────────────────┘
 ```
 
+```
+Kestra / Airflow
+├── GCS raw 업로드
+├── Spark 처리
+├── BigQuery external 생성
+└── dbt run
+        ↓
+dbt
+├── staging (external → native)
+├── intermediate
+├── core (prod, incremental MERGE)
+└── marts
+
+```
+
 ## ELT 패턴 (Extract, Load, Transform)
 
 이 프로젝트는 **Modern ELT** 패턴을 따릅니다:
