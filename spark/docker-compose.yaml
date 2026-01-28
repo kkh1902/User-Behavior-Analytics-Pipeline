@@ -1,0 +1,105 @@
+version: "3.8"
+
+services:
+  spark-master:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    container_name: spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    volumes:
+      - ../cred:/cred
+    networks: [spark-net]
+  
+  spark-worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    container_name: spark-worker-1
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+    depends_on: [spark-master]
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    ports:
+      - "8081:8081"
+    volumes:
+      - ../cred:/cred
+    networks: [spark-net]
+
+  spark-worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    container_name: spark-worker-2
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+    depends_on: [spark-master]
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    ports:
+      - "8082:8081"
+    volumes:
+      - ../cred:/cred
+    networks: [spark-net]
+
+  spark-worker-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    container_name: spark-worker-3
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+    depends_on: [spark-master]
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    ports:
+      - "8083:8081"
+    volumes:
+      - ../cred:/cred
+    networks: [spark-net]
+  
+  jupyterlab:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    container_name: jupyterlab
+    ports:
+      - "8888:8888"
+      - "4040:4040"
+    volumes:
+      - .:/home/spark/work
+      - ../cred:/cred
+    environment:
+      - HADOOP_USER_NAME=spark
+      - SPARK_MASTER=spark://spark-master:7077
+      - HOME=/home/spark
+      - USER=spark
+      - SPARK_HOME=/opt/spark
+    depends_on: [spark-master]
+    networks: [spark-net]
+    command: >
+      jupyter lab
+      --ip=0.0.0.0
+      --port=8888
+      --notebook-dir=/home/spark/work
+      --no-browser
+      --NotebookApp.token=''
+      --NotebookApp.password=''
+
+
+networks:
+  spark-net:
+    driver: bridge

@@ -1,5 +1,9 @@
 # data
-data/
+data/*.csv
+.ipynb_checkpoints/
+
+# cred
+cred/
 
 # IDE                                              
 .idea/                                             
@@ -9,3 +13,12 @@ data/
 # OS                                               
 .DS_Store                                          
 Thumbs.db  
+
+# spark
+spark/.ipython/
+spark/.jupyter/
+spark/.local/
+spark/.npm/
+spark/.ivy2/
+spark/output/
+spark/output/**
