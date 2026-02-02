@@ -73,7 +73,7 @@ terraform apply
 - Connect BigQuery tables to Looker Studio and build dashboards.
 
 ## Architecture
-
+![alt text](images/architecture.png)
 ## Data Visualization with Looker Studio
 ![alt text](images/analysis.png)
 
