@@ -1,7 +1,7 @@
--- 분석 테이블 (BigQuery)
--- 1) source_table은 clickstream_partitioned_clustered를 사용하세요.
+-- Analysis table (BigQuery)
+-- 1) Use clickstream_partitioned_clustered as the source table.
 
--- datetime별 event_type 집계 테이블 (도넛/라인 차트 공용)
+-- Hourly event_type aggregation table (for donut/line charts)
 CREATE OR REPLACE TABLE `clickstream-pipeline-484705.clickstream.event_type_by_hour` AS
 SELECT
   TIMESTAMP_TRUNC(event_time, HOUR) AS event_hour,

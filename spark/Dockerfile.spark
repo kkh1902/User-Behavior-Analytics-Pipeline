@@ -4,7 +4,7 @@ ARG GCS_CONNECTOR_VERSION=2.2.5
 
 USER root
 
-# 기본 유틸
+# Basic utilities
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # --- GCS Connector (shaded) ---
@@ -18,13 +18,13 @@ RUN curl -fL -o /opt/spark/jars/gcs-connector-hadoop3-${GCS_CONNECTOR_VERSION}-s
 # --- JupyterLab ---
 RUN pip install --no-cache-dir pyspark jupyterlab
 
-# ✅ spark 사용자의 UID를 1000으로 변경 (호스트와 일치)
+# ✅ Change spark user's UID to 1000 (match host)
 RUN usermod -u 1000 spark && groupmod -g 1000 spark
 
 RUN mkdir -p /opt/spark/work \
   && chown -R spark:spark /opt/spark/work
 
-# ✅ Jupyter / Spark / Ivy용 디렉토리 (컨테이너 전용 경로)
+# ✅ Directories for Jupyter / Spark / Ivy (container-only paths)
 RUN mkdir -p \
     /home/spark/.jupyter/runtime \
     /home/spark/.jupyter/data \
@@ -32,7 +32,7 @@ RUN mkdir -p \
     /home/spark/.ivy2 \
  && chown -R 1000:1000 /home/spark
 
-# ✅ HOME 기준 통일
+# ✅ Standardize HOME
 ENV HOME=/home/spark
 
 USER spark
