@@ -1,7 +1,7 @@
 -- BigQuery External Table (GCS Parquet)
--- 1) 버킷은 clickstream-pipeline-484705-clickstream-data 기준입니다.
--- 2) Spark 출력 경로가 예: gs://<bucket>/processed/clickstream/2019-Oct/ ...
--- 3) hive partitioning을 사용하므로 파티션 컬럼(event_month, event_date)을 자동 인식합니다.
+-- 1) Bucket is based on clickstream-pipeline-484705-clickstream-data.
+-- 2) Spark output path example: gs://<bucket>/processed/clickstream/2019-Oct/ ...
+-- 3) Hive partitioning auto-detects partition columns (event_month, event_date).
 
 CREATE OR REPLACE EXTERNAL TABLE `clickstream-pipeline-484705.clickstream.clickstream_external`
 (
@@ -24,4 +24,3 @@ OPTIONS (
   uris = ['gs://clickstream-pipeline-484705-clickstream-data/processed/clickstream/*'],
   hive_partition_uri_prefix = 'gs://clickstream-pipeline-484705-clickstream-data/processed/clickstream/'
 );
-코드 

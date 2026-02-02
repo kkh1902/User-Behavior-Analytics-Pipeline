@@ -1,5 +1,5 @@
 -- BigQuery Native Tables (from external)
--- Prereq: create_external_table.sql 먼저 실행해 external 테이블 생성
+-- Prereq: run create_external_table.sql first to create the external table
 
 -- 1) Partitioned only
 CREATE OR REPLACE TABLE `clickstream-pipeline-484705.clickstream.clickstream_partitioned`
