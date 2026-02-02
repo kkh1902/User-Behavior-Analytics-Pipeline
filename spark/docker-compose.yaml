@@ -11,6 +11,7 @@ services:
       - "7077:7077"
       - "8080:8080"
     volumes:
+      - .:/home/spark/work
       - ../cred:/cred
     networks: [spark-net]
   
@@ -26,10 +27,11 @@ services:
     depends_on: [spark-master]
     environment:
       - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_MEMORY=4g
     ports:
       - "8081:8081"
     volumes:
+      - .:/home/spark/work
       - ../cred:/cred
     networks: [spark-net]
 
@@ -45,10 +47,11 @@ services:
     depends_on: [spark-master]
     environment:
       - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_MEMORY=4g
     ports:
       - "8082:8081"
     volumes:
+      - .:/home/spark/work
       - ../cred:/cred
     networks: [spark-net]
 
@@ -64,10 +67,11 @@ services:
     depends_on: [spark-master]
     environment:
       - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_MEMORY=4g
     ports:
       - "8083:8081"
     volumes:
+      - .:/home/spark/work
       - ../cred:/cred
     networks: [spark-net]
   

@@ -22,3 +22,13 @@ spark/.npm/
 spark/.ivy2/
 spark/output/
 spark/output/**
+
+# venv
+.venv
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

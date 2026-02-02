@@ -14,9 +14,9 @@ tasks:
       - apt-get update
       - apt-get install -y unzip
       - pip install --no-cache-dir kaggle
-      - kaggle datasets download zynicide/wine-reviews
+      - kaggle datasets download mkechinov/ecommerce-behavior-data-from-multi-category-store
       - mkdir -p extracted
-      - unzip -o wine-reviews.zip -d extracted
+      - unzip -o *.zip -d extracted
       - ls -lah
 
   - id: debug_output_files
@@ -32,7 +32,7 @@ tasks:
       - id: upload_one_csv
         type: io.kestra.plugin.gcp.gcs.Upload
         from: "{{ outputs.download_kaggle_dataset.outputFiles[taskrun.value] }}"
-        to: "gs://{{ kv('GCP_BUCKET_NAME') }}/test/raw/{{ taskrun.value }}"
+        to: "gs://{{ kv('GCP_BUCKET_NAME') }}/raw/{{ taskrun.value | split('/') | last }}"
 
 pluginDefaults:
   - type: io.kestra.plugin.gcp

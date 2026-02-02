@@ -39,7 +39,7 @@ services:
             password: k3str4
         kestra:
           tutorialFlows:
-            enabled: false             
+            enabled: false
           server:
             basic-auth:
               username: admin@kestra.io
@@ -55,6 +55,9 @@ services:
           tasks:
             tmp-dir:
               path: /tmp/kestra-wd/tmp
+            scripts:
+              docker:
+                volume-enabled: true
           url: http://localhost:8080/
 
     volumes:
@@ -65,8 +68,8 @@ services:
       - ../data:/app/data
 
     ports:
-      - "8080:8080"
-      - "8081:8081"
+      - "8040:8080"
+      - "8041:8081"
 
     depends_on:
       postgres:
