@@ -1,74 +1,85 @@
-d하# Clickstream Pipeline
+## Overview
+This project builds a data engineering pipeline that analyzes e-commerce clickstream data to derive business insights. It collects, processes, and analyzes event logs to understand purchase conversion patterns, product interest, and user journeys, supporting marketing and UX improvements.
 
-## 프로젝트 개요
-본 프로젝트는 e-commerce 플랫폼의 클릭스트림 데이터를 활용하여 사용자 행동을 분석하고 비즈니스 인사이트를 도출하는 완벽한 데이터 엔지니어링 파이프라인을 구축합니다. 이 시스템은 사용자 이벤트 로그를 수집, 처리 및 분석하여 구매 전환 패턴, 상품 관심도, 사용자 여정을 파악하고, 이를 바탕으로 마케팅 전략과 UX 개선을 지원합니다.
+## Problems Addressed
+- Identify user purchase journeys and drop-off points
+- Analyze view/cart/purchase conversion rates by product
+- Detect time-based traffic patterns and peak hours
+- Track user interest by category/brand
+- Session-based behavior analysis
 
-## 해결 중인 문제
-e-commerce 플랫폼은 대량의 사용자 행동 데이터를 효과적으로 분석해야 합니다. 하지만 효율적인 데이터 처리가 없으면 다음과 같은 어려움이 발생합니다.
+## 📌 Project Goals
+Build an end-to-end pipeline for clickstream analytics using modern cloud and open-source tools.
 
-- 사용자 구매 여정 및 이탈 지점 파악
-- 상품별 조회/장바구니/구매 전환율 분석
-- 시간대별 트래픽 패턴 및 피크 시간 식별
-- 카테고리/브랜드별 사용자 관심도 추적
-- 세션 기반 사용자 행동 분석
+### ✅ Technical Goals
+- **Terraform**: Provision GCP resources automatically
+- **Kestra**: Orchestrate data ingestion workflows
+- **Apache Spark**: Process and transform large datasets
+- **BigQuery**: Load and analyze warehouse data
+- **Looker Studio**: Visualize dashboards
 
-## 📌 프로젝트 목표
-본 프로젝트의 주요 목표는 최신 클라우드 및 오픈 소스 도구를 활용하여 클릭스트림 데이터 분석을 위한 엔드투엔드 데이터 엔지니어링 파이프라인을 구축하는 것입니다. 효율적인 이벤트 데이터 수집, 처리, 저장 및 시각화를 통해 사용자 행동, 상품 성과 및 전환 패턴에 대한 유용한 인사이트를 도출합니다.
+## Tech Stack
+| Area | Technology |
+|------|------------|
+| Cloud | Google Cloud Platform (GCP) |
+| Infrastructure | Terraform |
+| Orchestration | Kestra |
+| Data Processing | Apache Spark |
+| Data Warehouse | BigQuery |
+| Storage | Google Cloud Storage |
+| Visualization | Looker Studio |
 
-### ✅ 기술적 목표
+## Analysis Summary (BigQuery)
+Based on `BigQuery/clickstream_analysis.sql`:
 
-**Terraform을 사용한 인프라 배포**
-- Terraform을 사용하여 Google Cloud Platform(GCP)의 클라우드 리소스를 자동화되고 확장 가능하며 재현 가능한 방식으로 프로비저닝하고 관리합니다.
+- Periodic (hourly) event-type distribution: `event_type_by_hour`
+- Visualization use: donut/line charts to show hourly event ratios and trends
 
-**Kestra를 사용한 데이터 수집**
-- Kestra를 사용하여 클릭스트림 데이터를 Google Cloud Storage(GCS) 버킷으로 자동 수집하는 워크플로 오케스트레이션 시스템을 구현합니다.
+For details, see `BigQuery/README.md`.
 
-**Apache Spark를 이용한 데이터 처리**
-- 수집된 데이터의 일괄 처리를 위해 Apache Spark를 활용합니다.
-- Spark SQL을 사용하여 데이터 변환을 수행하고 여러 원시 데이터 세트를 결합합니다.
-- 처리 및 정리된 데이터를 Parquet 파일 형식으로 지정된 GCS 버킷에 저장합니다.
-
-**dbt를 사용한 데이터 모델링**
-- dbt를 활용하여 분석용 데이터 마트를 구축합니다.
-- 사용자 세션, 전환 퍼널, 상품 성과 등 비즈니스 모델을 정의합니다.
-- 데이터 품질 테스트 및 문서화를 자동화합니다.
-
-**BigQuery를 사용한 데이터 웨어하우징**
-- 처리된 Parquet 파일을 GCS 버킷에서 Google BigQuery로 로드합니다.
-- 쿼리 성능 최적화를 위해 파티션 및 클러스터링된 테이블을 생성합니다.
-- 전환율 분석, 상품 성과, 사용자 세그먼트 등 비즈니스 인사이트를 도출하기 위한 SQL 쿼리를 설계하고 실행합니다.
-
-**Looker Studio를 활용한 데이터 시각화**
-- Looker Studio를 BigQuery 데이터 웨어하우스에 연결합니다.
-- 다음과 같은 주요 지표 및 인사이트를 시각화하는 대시보드를 개발합니다:
-  - 일별/시간대별 트래픽 및 이벤트 추이
-  - 상품/카테고리별 조회, 장바구니, 구매 전환율
-  - 사용자 세션 분석 및 이탈 지점
-  - 인기 상품 및 브랜드 랭킹
-  - 구매 퍼널 시각화
-
-## 기술 스택
-| 영역 | 기술 |
-|------|------|
-| 클라우드 | Google Cloud Platform (GCP) |
-| 인프라 | Terraform |
-| 오케스트레이션 | Kestra |
-| 데이터 처리 | Apache Spark |
-| 데이터 변환 | dbt |
-| 데이터 웨어하우스 | BigQuery |
-| 스토리지 | Google Cloud Storage |
-| 시각화 | Looker Studio |
-
-## 폴더 구조
+## Folder Structure
 ```
 clickstream-pipeline/
-├── data/        # 원시 데이터
-├── spark/       # Spark 잡
-├── dbt/         # dbt 프로젝트
-├── kestra/      # 워크플로우 정의
-└── terraform/   # 인프라 코드
+├── data/        # Raw data
+├── spark/       # Spark jobs
+├── kestra/      # Workflow definitions
+└── terraform/   # Infrastructure code
 ```
+
+## How to Run
+
+### 1) Provision Infrastructure (Terraform)
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+- The service account key path uses `cred/clickstream-sa.json` in `terraform/main.tf`.
+- Adjust variables in `terraform/variables.tf` or with `*.tfvars`.
+
+### 2) Configure and Run Kestra
+- Register KV/Secret values and upload flows (see `kestra/README.md`).
+- Enable flows in the Kestra UI and run with inputs as needed.
+
+### 3) Run Spark Processing
+- Follow the execution steps in `spark/README.md`.
+
+### 4) Load and Analyze in BigQuery
+- Load Parquet outputs into BigQuery and run queries.
+- See `BigQuery/README.md` for details.
+
+### 5) Visualization (Looker Studio)
+- Connect BigQuery tables to Looker Studio and build dashboards.
 
 ## Architecture
 
 ## Data Visualization with Looker Studio
+![alt text](images/analysis.png)
+
+## Why Not (Yet)
+- **Why dbt is not used**: With only one analytics table, adding dbt felt unnecessary. It can be added later in `dbt/` if modeling expands.
+- **Why Spark jobs are not run via Kestra**: There wasn’t enough reliable reference material to build a stable Kestra–Spark integration in the current environment. Spark orchestration is planned for a future Airflow project.
+
+## References
+- Dataset: [E-commerce Behavior Data (2019 Oct/Nov)](https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store?select=2019-Oct.csv)

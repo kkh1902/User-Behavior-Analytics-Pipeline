@@ -1,0 +1,43 @@
+id: csv_gcs_load
+namespace: clickstream.pipeline
+
+tasks:
+  - id: download_kaggle_dataset
+    type: io.kestra.plugin.scripts.shell.Commands
+    containerImage: python:3.11-slim
+    env:
+      KAGGLE_USERNAME: "{{ kv('KAGGLE_USERNAME') }}"
+      KAGGLE_KEY: "{{ kv('KAGGLE_API_KEY') }}"
+    outputFiles:
+      - "extracted/*.csv"
+    commands:
+      - apt-get update
+      - apt-get install -y unzip
+      - pip install --no-cache-dir kaggle
+      - kaggle datasets download mkechinov/ecommerce-behavior-data-from-multi-category-store
+      - mkdir -p extracted
+      - unzip -o *.zip -d extracted
+      - ls -lah
+
+  - id: debug_output_files
+    type: io.kestra.plugin.core.log.Log
+    message: |
+      Output files:
+      {{ outputs.download_kaggle_dataset.outputFiles | keys }}
+
+  - id: upload_csvs_to_gcs
+    type: io.kestra.plugin.core.flow.ForEach
+    values: "{{ outputs.download_kaggle_dataset.outputFiles | keys }}"
+    tasks:
+      - id: upload_one_csv
+        type: io.kestra.plugin.gcp.gcs.Upload
+        from: "{{ outputs.download_kaggle_dataset.outputFiles[taskrun.value] }}"
+        to: "gs://{{ kv('GCP_BUCKET_NAME') }}/raw/{{ taskrun.value | split('/') | last }}"
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{ kv('GCP_CREDS') }}"
+      projectId: "{{ kv('GCP_PROJECT_ID') }}"
+      location: "{{ kv('GCP_LOCATION') }}"
+      bucket: "{{ kv('GCP_BUCKET_NAME') }}"
