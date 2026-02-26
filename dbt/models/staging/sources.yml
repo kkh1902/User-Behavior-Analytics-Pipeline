@@ -30,3 +30,5 @@ sources:
             description: "이벤트 날짜 (파티션 컬럼)"
           - name: event_month
             description: "이벤트 월 (파티션 컬럼)"
+          - name: event_month_date
+            description: "이벤트 월 시작일 (DATE)"

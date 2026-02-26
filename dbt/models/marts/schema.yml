@@ -3,8 +3,36 @@ version: 2
 models:
   - name: fct_funnel_events
     description: "세션+상품 단위 퍼널 단계 플래그 (view/cart/purchase 도달 여부)"
+    config:
+      contract:
+        enforced: true
     columns:
+      - name: user_id
+        data_type: int64
+      - name: user_session
+        data_type: string
+      - name: product_id
+        data_type: int64
+      - name: category_main
+        data_type: string
+      - name: brand
+        data_type: string
+      - name: price
+        data_type: float64
+      - name: event_date
+        data_type: date
+      - name: event_month
+        data_type: string
+      - name: event_month_date
+        data_type: date
+      - name: has_view
+        data_type: int64
+      - name: has_cart
+        data_type: int64
+      - name: has_purchase
+        data_type: int64
       - name: funnel_stage
+        data_type: string
         description: "최종 도달 퍼널 단계"
         tests:
           - accepted_values:
@@ -12,10 +40,30 @@ models:
 
   - name: mart_funnel
     description: "카테고리/브랜드/월별 전환율 집계 (Looker Studio용)"
+    config:
+      contract:
+        enforced: true
     columns:
+      - name: event_month
+        data_type: string
+      - name: event_month_date
+        data_type: date
+      - name: category_main
+        data_type: string
+      - name: brand
+        data_type: string
+      - name: view_count
+        data_type: int64
+      - name: cart_count
+        data_type: int64
+      - name: purchase_count
+        data_type: int64
       - name: view_to_cart_rate
+        data_type: float64
         description: "view → cart 전환율 (%)"
       - name: cart_to_purchase_rate
+        data_type: float64
         description: "cart → purchase 전환율 (%)"
       - name: overall_conversion_rate
+        data_type: float64
         description: "view → purchase 전체 전환율 (%)"
