@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: fct_funnel_events
+    description: "세션+상품 단위 퍼널 단계 플래그 (view/cart/purchase 도달 여부)"
+    columns:
+      - name: funnel_stage
+        description: "최종 도달 퍼널 단계"
+        tests:
+          - accepted_values:
+              values: ['view', 'cart', 'purchase']
+
+  - name: mart_funnel
+    description: "카테고리/브랜드/월별 전환율 집계 (Looker Studio용)"
+    columns:
+      - name: view_to_cart_rate
+        description: "view → cart 전환율 (%)"
+      - name: cart_to_purchase_rate
+        description: "cart → purchase 전환율 (%)"
+      - name: overall_conversion_rate
+        description: "view → purchase 전체 전환율 (%)"

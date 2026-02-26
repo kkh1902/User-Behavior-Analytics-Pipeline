@@ -26,6 +26,20 @@ spark/output/**
 # venv
 .venv
 
+# env
+.env
+airflow/.env
+
+# dbt
+dbt/.venv/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
+# airflow
+airflow/logs/
+
 # python
 __pycache__/
 *.pyc

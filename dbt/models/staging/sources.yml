@@ -1,0 +1,32 @@
+version: 2
+
+sources:
+  - name: clickstream_raw
+    database: clickstream-pipeline-484705
+    schema: clickstream
+    tables:
+      - name: clickstream_partitioned_clustered
+        description: "파티션+클러스터 적용된 클릭스트림 원본 이벤트 테이블"
+        columns:
+          - name: event_time
+            description: "이벤트 발생 시각"
+          - name: event_type
+            description: "이벤트 유형 (view, cart, purchase)"
+          - name: product_id
+            description: "상품 ID"
+          - name: category_id
+            description: "카테고리 ID"
+          - name: category_code
+            description: "카테고리 코드 (예: electronics.smartphone)"
+          - name: brand
+            description: "브랜드명"
+          - name: price
+            description: "상품 가격"
+          - name: user_id
+            description: "사용자 ID"
+          - name: user_session
+            description: "사용자 세션 ID"
+          - name: event_date
+            description: "이벤트 날짜 (파티션 컬럼)"
+          - name: event_month
+            description: "이벤트 월 (파티션 컬럼)"

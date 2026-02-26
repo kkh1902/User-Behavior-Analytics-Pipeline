@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: stg_clickstream
+    description: "정제된 클릭스트림 이벤트 (view/cart/purchase만 포함)"
+    columns:
+      - name: event_type
+        description: "이벤트 유형"
+        tests:
+          - accepted_values:
+              values: ['view', 'cart', 'purchase']
+      - name: user_id
+        tests:
+          - not_null
+      - name: user_session
+        tests:
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
