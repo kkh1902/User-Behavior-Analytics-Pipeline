@@ -1,30 +1,22 @@
 from __future__ import annotations
 
-import glob
 import os
 from datetime import datetime
+from pathlib import Path
 
 import requests
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 
 GCP_BUCKET = os.environ.get("GCP_BUCKET_NAME", "clickstream-pipeline-484705-clickstream-data")
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "clickstream-pipeline-484705")
+BQ_DATASET = os.environ.get("BQ_DATASET", "clickstream")
 GCP_CREDS_PATH = "/cred/clickstream-sa.json"
-SPARK_JOB = "/opt/airflow/spark/jobs/csv_parquet_job.py"
-GCS_CONNECTOR_JAR = "/opt/gcs-jars/gcs-connector-hadoop3-shaded.jar"
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
 
 DBT_DIR = "/opt/airflow/dbt"
-
-_SPARK_GCS_CONF = {
-    "spark.hadoop.fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem",
-    "spark.hadoop.fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS",
-    "spark.hadoop.google.cloud.auth.service.account.enable": "true",
-    "spark.hadoop.google.cloud.auth.service.account.json.keyfile": GCP_CREDS_PATH,
-}
-
+SQL_DIR = Path(__file__).resolve().parent / "sql"
 
 def slack_alert(context):
     if not SLACK_WEBHOOK_URL:
@@ -56,94 +48,53 @@ with DAG(
     default_args=default_args,
     schedule=None,
     catchup=False,
-    tags=["clickstream", "gcs", "spark", "dbt"],
-    description="Kaggle CSV 다운로드 → GCS 업로드 → Spark 변환 → dbt 모델링",
+    tags=["clickstream", "bigquery", "dbt"],
+    description="BigQuery DDL → dbt 모델링",
 ) as dag:
+    # 1. BigQuery DDL 실행 (external/partitioned/clustered 테이블 생성)
+    def create_bigquery_tables() -> None:
+        from google.cloud import bigquery
 
-    # 1. Kaggle 데이터셋 다운로드
-    download_dataset = BashOperator(
-        task_id="download_kaggle_dataset",
-        bash_command=(
-            "mkdir -p /tmp/clickstream_raw && "
-            "cd /tmp/clickstream_raw && "
-            "kaggle datasets download mkechinov/ecommerce-behavior-data-from-multi-category-store --force"
-        ),
+        client = bigquery.Client.from_service_account_json(
+            GCP_CREDS_PATH,
+            project=GCP_PROJECT_ID,
+        )
+
+        sql_files = [
+            SQL_DIR / "create_external_table.sql",
+            SQL_DIR / "create_partitioned_table.sql",
+            SQL_DIR / "create_partitioned_clustered_table.sql",
+        ]
+
+        for sql_file in sql_files:
+            sql_template = sql_file.read_text(encoding="utf-8")
+            query = sql_template.format(
+                project_id=GCP_PROJECT_ID,
+                dataset=BQ_DATASET,
+                bucket=GCP_BUCKET,
+            )
+            client.query(query).result()
+
+    create_bq_tables = PythonOperator(
+        task_id="create_bigquery_tables",
+        python_callable=create_bigquery_tables,
     )
 
-    # 2. 다운로드된 압축 파일 해제
-    unzip_dataset = BashOperator(
-        task_id="unzip_dataset",
-        bash_command=(
-            "cd /tmp/clickstream_raw && "
-            "unzip -o *.zip -d extracted && "
-            "ls -lah extracted/"
-        ),
-    )
-
-    # 3. CSV 파일을 GCS로 업로드
-    def upload_csvs_to_gcs() -> None:
-        from google.cloud import storage
-
-        client = storage.Client.from_service_account_json(GCP_CREDS_PATH)
-        bucket = client.bucket(GCP_BUCKET)
-
-        csv_files = glob.glob("/tmp/clickstream_raw/extracted/*.csv")
-        if not csv_files:
-            raise FileNotFoundError("업로드할 CSV 파일이 없습니다: /tmp/clickstream_raw/extracted/")
-
-        for local_path in csv_files:
-            filename = os.path.basename(local_path)
-            blob_name = f"raw/kaggle/{filename}"
-            blob = bucket.blob(blob_name)
-            blob.upload_from_filename(local_path)
-            print(f"업로드 완료: {filename} → gs://{GCP_BUCKET}/{blob_name}")
-
-    upload_to_gcs = PythonOperator(
-        task_id="upload_csvs_to_gcs",
-        python_callable=upload_csvs_to_gcs,
-    )
-
-    # 4. Spark: 10월 CSV → Parquet 변환
-    spark_oct = SparkSubmitOperator(
-        task_id="spark_csv_to_parquet_oct",
-        conn_id="spark_default",
-        application=SPARK_JOB,
-        application_args=[
-            "--bucket", GCP_BUCKET,
-            "--month", "10",
-            "--gcs-keyfile", GCP_CREDS_PATH,
-        ],
-        jars=GCS_CONNECTOR_JAR,
-        conf=_SPARK_GCS_CONF,
-        name="clickstream_csv_to_parquet_oct",
-    )
-
-    # 5. Spark: 11월 CSV → Parquet 변환
-    spark_nov = SparkSubmitOperator(
-        task_id="spark_csv_to_parquet_nov",
-        conn_id="spark_default",
-        application=SPARK_JOB,
-        application_args=[
-            "--bucket", GCP_BUCKET,
-            "--month", "11",
-            "--gcs-keyfile", GCP_CREDS_PATH,
-        ],
-        jars=GCS_CONNECTOR_JAR,
-        conf=_SPARK_GCS_CONF,
-        name="clickstream_csv_to_parquet_nov",
-    )
-
-    # 6. dbt 모델 실행 (stg → fct → mart)
+    # 2. dbt 모델 실행 (stg → fct → mart)
     dbt_run = BashOperator(
         task_id="dbt_run",
-        bash_command=f"cd {DBT_DIR} && .venv/bin/dbt run --profiles-dir .",
+        bash_command=f"cd {DBT_DIR} && dbt run --profiles-dir . --target-path /tmp/dbt-target --log-path /tmp/dbt-logs",
     )
 
-    # 7. dbt 데이터 품질 테스트
+    # 3. dbt 데이터 품질 테스트
     dbt_test = BashOperator(
         task_id="dbt_test",
-        bash_command=f"cd {DBT_DIR} && .venv/bin/dbt test --profiles-dir .",
+        bash_command=f"cd {DBT_DIR} && dbt test --profiles-dir . --target-path /tmp/dbt-target --log-path /tmp/dbt-logs",
     )
 
     # 의존성
-    download_dataset >> unzip_dataset >> upload_to_gcs >> [spark_oct, spark_nov] >> dbt_run >> dbt_test
+    (
+        create_bq_tables
+        >> dbt_run
+        >> dbt_test
+    )

@@ -35,7 +35,12 @@ dbt/.venv/
 dbt/target/
 dbt/logs/
 dbt/dbt_packages/
+dbt/dbt_internal_packages/
 dbt/.user.yml
+
+# local report/screenshot artifacts
+image.png
+image-1.png
 
 # airflow
 airflow/logs/
@@ -46,3 +51,4 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+*.ini

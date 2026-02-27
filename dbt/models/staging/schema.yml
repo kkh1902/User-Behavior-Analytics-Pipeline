@@ -8,7 +8,8 @@ models:
         description: "이벤트 유형"
         tests:
           - accepted_values:
-              values: ['view', 'cart', 'purchase']
+              arguments:
+                values: ['view', 'cart', 'purchase']
       - name: user_id
         tests:
           - not_null

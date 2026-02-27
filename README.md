@@ -146,8 +146,8 @@ dbt test --profiles-dir .  # 데이터 품질 테스트
 ![아키텍처](images/architecture.png)
 
 ## Looker Studio 데이터 시각화
-![분석 결과](images/analysis.png)
-
+![alt text](assets/mart_funnel.png)
+![alt text](assets/mart_daily_funnel_kpi.png)
 
 ## 참고 자료
 - 데이터셋: [E-commerce Behavior Data (2019 Oct/Nov)](https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store?select=2019-Oct.csv)

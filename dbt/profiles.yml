@@ -6,7 +6,7 @@ clickstream:
       method: service-account
       project: clickstream-pipeline-484705
       dataset: clickstream_dbt
-      keyfile: "{{ env_var('DBT_KEYFILE', '../cred/clickstream-sa.json') }}"
+      keyfile: "{{ env_var('DBT_KEYFILE', '/cred/clickstream-sa.json') }}"
       location: asia-northeast3
       threads: 4
       timeout_seconds: 300
