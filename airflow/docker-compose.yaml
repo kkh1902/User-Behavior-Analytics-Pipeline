@@ -1,5 +1,3 @@
-version: "3.8"
-
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -19,6 +17,7 @@ x-airflow-common: &airflow-common
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ../spark/jobs:/opt/airflow/spark/jobs
+    - ../dbt:/opt/airflow/dbt
     - ../cred:/cred
   networks:
     - pipeline-net
@@ -47,15 +46,9 @@ services:
     <<: *airflow-common
     command: >
       bash -c "
-        airflow db init &&
-        airflow users create \
-          --username admin --password admin \
-          --firstname Admin --lastname User \
-          --role Admin --email admin@example.com || true &&
-        airflow connections add spark_default \
-          --conn-type spark \
-          --conn-host 'spark://spark-master' \
-          --conn-port 7077 || true
+        airflow db migrate &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
+        airflow connections add spark_default --conn-type spark --conn-host 'spark://spark-master' --conn-port 7077 || true
       "
     restart: "no"
 
@@ -100,7 +93,7 @@ services:
       - spark-master
     environment:
       SPARK_WORKER_CORES: "2"
-      SPARK_WORKER_MEMORY: "4g"
+      SPARK_WORKER_MEMORY: "5g"
     volumes:
       - ../cred:/cred
     networks:
@@ -115,7 +108,20 @@ services:
       - spark-master
     environment:
       SPARK_WORKER_CORES: "2"
-      SPARK_WORKER_MEMORY: "4g"
+      SPARK_WORKER_MEMORY: "5g"
+    volumes:
+      - ../cred:/cred
+    networks:
+      - pipeline-net
+
+  spark-worker-3:
+    image: airflow-spark-worker-1
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_WORKER_CORES: "2"
+      SPARK_WORKER_MEMORY: "5g"
     volumes:
       - ../cred:/cred
     networks:

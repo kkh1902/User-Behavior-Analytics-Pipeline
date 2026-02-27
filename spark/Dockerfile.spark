@@ -1,4 +1,4 @@
-FROM apache/spark:3.5.0
+FROM apache/spark:3.5.1
 
 ARG GCS_CONNECTOR_VERSION=2.2.5
 
@@ -16,7 +16,7 @@ RUN curl -fL -o /opt/spark/jars/gcs-connector-hadoop3-${GCS_CONNECTOR_VERSION}-s
   && ls -lah /opt/spark/jars | grep gcs
 
 # --- JupyterLab ---
-RUN pip install --no-cache-dir pyspark jupyterlab
+RUN pip install --no-cache-dir pyspark==3.5.1 jupyterlab
 
 # ✅ Change spark user's UID to 1000 (match host)
 RUN usermod -u 1000 spark && groupmod -g 1000 spark

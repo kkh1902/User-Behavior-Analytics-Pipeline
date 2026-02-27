@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: |
+          pip install --upgrade pip
+          pip install ruff
+
+      - name: Run ruff (critical checks)
+        run: ruff check --select E9,F63,F7,F82 airflow/dags spark/jobs tests
+
+  spark-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Spark test dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest pyspark==3.5.1
+
+      - name: Run Spark unit tests
+        run: pytest -q tests/unit/test_spark_csv_parquet_job.py
+
+  dag-tests:
+    runs-on: ubuntu-latest
+    env:
+      AIRFLOW_VERSION: "2.9.0"
+      PYTHON_VERSION: "3.11"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: |
+          CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
+          pip install --upgrade pip
+          pip install pytest "apache-airflow==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
+          pip install apache-airflow-providers-apache-spark requests --constraint "${CONSTRAINT_URL}"
+
+      - name: Run Airflow unit tests
+        run: pytest -q tests/unit/test_clickstream_dag.py
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install integration test dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest pyspark==3.5.1
+
+      - name: Run integration tests
+        run: pytest -q tests/integration

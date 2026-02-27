@@ -20,10 +20,12 @@ USER airflow
 
 # Python 패키지 설치 (pyspark에 spark-submit 포함)
 RUN pip install --no-cache-dir \
-    apache-airflow-providers-apache-spark \
+    apache-airflow-providers-apache-spark==4.7.1 \
     pyspark==3.5.0 \
     kaggle \
-    google-cloud-storage
+    google-cloud-storage==2.16.0
+
+RUN pip install --no-cache-dir dbt-bigquery==1.8.2
 
 # SparkSubmitOperator가 참조하는 SPARK_HOME
 ENV SPARK_HOME=/home/airflow/.local/lib/python3.11/site-packages/pyspark
