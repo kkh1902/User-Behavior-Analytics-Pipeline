@@ -140,14 +140,42 @@ dbt test --profiles-dir .  # 데이터 품질 테스트
 | `mart_funnel` | 전환율 집계 (Looker Studio 연결용) |
 
 ### 6) 시각화 (Looker Studio)
-- BigQuery `clickstream_dbt.mart_funnel` 테이블을 Looker Studio에 연결하여 대시보드를 구성합니다.
+- BigQuery `clickstream_dbt` 데이터셋의 `mart_funnel`, `mart_daily_funnel_kpi`, `fct_funnel_events`를 Looker Studio에 연결합니다.
 
 ## 아키텍처
 ![아키텍처](images/architecture.png)
 
 ## Looker Studio 데이터 시각화
-![alt text](assets/mart_funnel.png)
-![alt text](assets/mart_daily_funnel_kpi.png)
+### 1) `mart_funnel` (월/카테고리/브랜드 전환율 비교)
+- 추천 차트: 월별 전환율 시계열, 카테고리/브랜드 전환율 막대 차트
+![mart_funnel](assets/mart_funnel.png)
+
+### 2) `mart_daily_funnel_kpi` (일별 KPI 모니터링)
+- 추천 차트: 일별 전환율 추이, 일별 세션 볼륨 추이
+![mart_daily_funnel_kpi](assets/mart_daily_funnel_kpi.png)
+
+### 3) `fct_funnel_events` (세션+상품 단위 퍼널 진단)
+- 추천 차트: `funnel_stage` 분포 도넛/막대, 카테고리별 단계 누적 막대
+![fct_funnel_events](assets/fct_funnel_events.png)
+
+## Looker Studio 결과 기반 인사이트
+### 1) `mart_funnel`
+- 차트: 월별 전환율 시계열 (`view_to_cart_rate`, `cart_to_purchase_rate`, `overall_conversion_rate`)
+- 인사이트: 월 단위 추세를 통해 전환율 개선/악화 시점을 파악하고, 프로모션/가격 정책 변경 시점과 비교해 효과를 평가할 수 있습니다.
+- 차트: 카테고리/브랜드 전환율 막대 차트
+- 인사이트: `category_main`과 `brand`별 편차를 비교해 개선 우선순위(상세페이지, 가격, 리뷰 관리)를 정할 수 있습니다.
+
+### 2) `mart_daily_funnel_kpi`
+- 차트: 일별 전환율 추이 시계열
+- 인사이트: 특정 날짜 급등/급락을 빠르게 찾고, 마케팅 집행/장애/재고 이슈와 연결해 원인을 좁힐 수 있습니다.
+- 차트: 일별 세션 볼륨 추이 (`view_sessions`, `cart_sessions`)
+- 인사이트: 유입은 늘었는데 전환이 낮으면 유입 품질 문제, 유입과 전환이 동반 상승하면 캠페인 적합도가 높다고 해석할 수 있습니다.
+
+### 3) `fct_funnel_events`
+- 차트: `funnel_stage` 분포 도넛/막대
+- 인사이트: 전체 세션이 어느 단계에서 가장 많이 이탈하는지 확인해 병목 구간(view→cart vs cart→purchase)을 명확히 볼 수 있습니다.
+- 차트: 카테고리별 단계 누적 막대 + 상세 테이블 (`has_view`, `has_cart`, `has_purchase`)
+- 인사이트: `purchase` 대비 `cart` 비율이 낮은 카테고리/브랜드를 찾아 결제 UX, 쿠폰, 배송비 정책 개선 대상을 구체화할 수 있습니다.
 
 ## 참고 자료
 - 데이터셋: [E-commerce Behavior Data (2019 Oct/Nov)](https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store?select=2019-Oct.csv)

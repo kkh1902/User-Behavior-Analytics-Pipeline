@@ -42,7 +42,7 @@ models:
                 values: ['view', 'cart', 'purchase']
 
   - name: mart_funnel
-    description: "카테고리/브랜드/월별 전환율 집계 (Looker Studio용)"
+    description: "카테고리/브랜드/월별 동일 모수 기준 전환율 집계 (Looker Studio용, 0~100%)"
     config:
       contract:
         enforced: true

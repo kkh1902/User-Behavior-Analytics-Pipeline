@@ -1,5 +1,5 @@
 -- Looker Studio용 최종 퍼널 전환율 집계
--- 카테고리 / 브랜드 / 월별로 view→cart→purchase 전환율 계산
+-- 카테고리 / 브랜드 / 월별 동일 모수 기준 view→cart→purchase 전환율 계산
 
 with funnel_base as (
     select
@@ -7,10 +7,10 @@ with funnel_base as (
         event_month_date,
         category_main,
         brand,
-        count(distinct user_session || '-' || cast(product_id as string)) as total_sessions,
-        sum(has_view)     as view_count,
-        sum(has_cart)     as cart_count,
-        sum(has_purchase) as purchase_count
+        -- 동일 모수 기준으로 단계별 카운트를 정의해 전환율이 0~100% 범위를 유지하도록 함
+        countif(has_view = 1) as view_count,
+        countif(has_view = 1 and has_cart = 1) as cart_count,
+        countif(has_view = 1 and has_cart = 1 and has_purchase = 1) as purchase_count
     from {{ ref('fct_funnel_events') }}
     group by event_month, event_month_date, category_main, brand
 )
