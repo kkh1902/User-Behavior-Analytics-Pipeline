@@ -44,6 +44,8 @@ jobs:
 
       - name: Run Spark unit tests
         run: pytest -q tests/unit/test_spark_csv_parquet_job.py
+        env:
+          PYTHONPATH: ${{ github.workspace }}
 
   dag-tests:
     runs-on: ubuntu-latest
@@ -64,10 +66,12 @@ jobs:
           CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
           pip install --upgrade pip
           pip install pytest "apache-airflow==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
-          pip install apache-airflow-providers-apache-spark requests --constraint "${CONSTRAINT_URL}"
+          pip install apache-airflow-providers-google requests --constraint "${CONSTRAINT_URL}"
 
       - name: Run Airflow unit tests
         run: pytest -q tests/unit/test_clickstream_dag.py
+        env:
+          PYTHONPATH: ${{ github.workspace }}
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -87,3 +91,5 @@ jobs:
 
       - name: Run integration tests
         run: pytest -q tests/integration
+        env:
+          PYTHONPATH: ${{ github.workspace }}

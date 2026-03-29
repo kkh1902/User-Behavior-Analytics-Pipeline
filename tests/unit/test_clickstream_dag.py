@@ -4,7 +4,7 @@ import pytest
 from airflow.models import DagBag
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.providers.google.cloud.operators.dataproc import DataprocSubmitJobOperator
 
 pytestmark = pytest.mark.unit
 
@@ -44,25 +44,27 @@ def test_expected_dags_exist_and_have_base_config() -> None:
 
 
 def test_spark_transform_dag_tasks_and_args() -> None:
-    # Monthly Spark transform tasks must have no upstream so they can run independently in parallel.
+    # Spark transform tasks run after GCS upload and sequentially to reduce resource contention.
     dag = _get_loaded_dag("clickstream_spark_transform")
     assert dag is not None
 
-    expected_tasks = {"spark_csv_to_parquet_oct", "spark_csv_to_parquet_nov"}
+    expected_tasks = {"upload_spark_job_to_gcs", "spark_csv_to_parquet_oct", "spark_csv_to_parquet_nov"}
     assert expected_tasks == set(dag.task_ids)
 
+    upload_job = dag.get_task("upload_spark_job_to_gcs")
     spark_oct = dag.get_task("spark_csv_to_parquet_oct")
     spark_nov = dag.get_task("spark_csv_to_parquet_nov")
 
-    assert isinstance(spark_oct, SparkSubmitOperator)
-    assert isinstance(spark_nov, SparkSubmitOperator)
+    assert isinstance(upload_job, PythonOperator)
+    assert isinstance(spark_oct, DataprocSubmitJobOperator)
+    assert isinstance(spark_nov, DataprocSubmitJobOperator)
 
-    assert spark_oct.upstream_task_ids == set()
-    assert spark_nov.upstream_task_ids == set()
-    assert "--month" in spark_oct.application_args
-    assert "--month" in spark_nov.application_args
-    assert "10" in spark_oct.application_args
-    assert "11" in spark_nov.application_args
+    assert spark_oct.upstream_task_ids == {"upload_spark_job_to_gcs"}
+    assert spark_nov.upstream_task_ids == {"spark_csv_to_parquet_oct"}
+    assert "--month" in spark_oct.job["pyspark_job"]["args"]
+    assert "--month" in spark_nov.job["pyspark_job"]["args"]
+    assert "10" in spark_oct.job["pyspark_job"]["args"]
+    assert "11" in spark_nov.job["pyspark_job"]["args"]
 
 
 def test_pipeline_dag_tasks_and_dependencies() -> None:

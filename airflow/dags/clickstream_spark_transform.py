@@ -52,8 +52,7 @@ def slack_alert(context):
 default_args = {
     "owner": "airflow",
     "start_date": datetime(2024, 1, 1),
-    # Disable automatic retries on failure for cost control
-    "retries": 0,
+    "retries": 1,
     "on_failure_callback": slack_alert,
 }
 
