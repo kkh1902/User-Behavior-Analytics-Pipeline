@@ -30,7 +30,7 @@ def spark() -> SparkSession:
 
 
 def test_cast_failures_are_detected_and_labeled(spark: SparkSession) -> None:
-    # 문자열 숫자 캐스팅 실패 행은 failure_reason에 실패 컬럼명이 기록돼야 한다.
+    # Rows that fail string-to-numeric casting must have the failing column names recorded in failure_reason.
     rows = [
         {
             "event_time": "2019-10-01 00:00:00 UTC",
@@ -70,7 +70,7 @@ def test_cast_failures_are_detected_and_labeled(spark: SparkSession) -> None:
 
 
 def test_processed_dataset_keeps_only_valid_rows_and_types(spark: SparkSession) -> None:
-    # 핵심 식별 컬럼(event_time/user_id/product_id) 중 하나라도 invalid면 제외되어야 한다.
+    # Any row with an invalid key identifier (event_time/user_id/product_id) must be excluded.
     rows = [
         {
             "event_time": "2019-11-01 00:00:00 UTC",
@@ -110,7 +110,7 @@ def test_processed_dataset_keeps_only_valid_rows_and_types(spark: SparkSession) 
 
 
 def test_partition_columns_are_derived_from_event_time(spark: SparkSession) -> None:
-    # partition 컬럼(event_month/event_date/event_month_date)이 UTC event_time 기준으로 파생돼야 한다.
+    # Partition columns (event_month/event_date/event_month_date) must be derived from UTC event_time.
     rows = [
         {
             "event_time": "2019-10-31 23:59:59 UTC",

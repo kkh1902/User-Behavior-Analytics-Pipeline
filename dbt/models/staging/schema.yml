@@ -2,10 +2,10 @@ version: 2
 
 models:
   - name: stg_clickstream
-    description: "정제된 클릭스트림 이벤트 (view/cart/purchase만 포함)"
+    description: "Cleaned clickstream events (view/cart/purchase only)"
     columns:
       - name: event_type
-        description: "이벤트 유형"
+        description: "Event type"
         tests:
           - accepted_values:
               arguments:

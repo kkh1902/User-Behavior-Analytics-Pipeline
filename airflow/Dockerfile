@@ -2,7 +2,7 @@ FROM apache/airflow:2.9.0-python3.11
 
 USER root
 
-# Java (Spark 실행에 필요)
+# Java (required for Spark)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends openjdk-17-jre-headless curl && \
     rm -rf /var/lib/apt/lists/*
@@ -18,7 +18,7 @@ RUN mkdir -p /opt/gcs-jars && \
 
 USER airflow
 
-# Python 패키지 설치 (pyspark에 spark-submit 포함)
+# Install Python packages (pyspark includes spark-submit)
 RUN pip install --no-cache-dir \
     apache-airflow-providers-apache-spark==4.7.1 \
     pyspark==3.5.0 \
@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir \
 
 RUN pip install --no-cache-dir dbt-bigquery==1.8.2
 
-# SparkSubmitOperator가 참조하는 SPARK_HOME
+# SPARK_HOME referenced by SparkSubmitOperator
 ENV SPARK_HOME=/home/airflow/.local/lib/python3.11/site-packages/pyspark
 ENV PATH=$PATH:$SPARK_HOME/bin
 ENV PYSPARK_PYTHON=python3

@@ -1,49 +1,49 @@
-# 클릭스트림 파이프라인 발표 대본 (16장 상세 버전)
+# Clickstream Pipeline Presentation Script (16-Slide Detailed Version)
 
-## 슬라이드 1. 타이틀
-안녕하세요. 이번 발표는 클릭스트림 데이터를 활용해 전환 퍼널 병목을 분석하는 데이터 파이프라인 구축 경험입니다. 핵심은 수집부터 BI 대시보드까지 하나의 운영 가능한 흐름으로 연결한 점입니다.
+## Slide 1. Title
+Hello. This presentation covers my experience building a data pipeline that analyses conversion funnel bottlenecks using clickstream data. The key achievement is connecting every step — from ingestion to a BI dashboard — into a single operable flow.
 
-## 슬라이드 2. 비즈니스 문제 정의
-문제는 단순히 전환율이 낮다는 것이 아니라, 이탈 원인을 설명할 수 있는 기준이 없었다는 점입니다. 실제로 트래픽은 증가해도 구매가 함께 늘지 않는 구간이 있었고, 카테고리와 브랜드별 편차도 크게 나타났습니다. 그래서 퍼널을 `view -> cart -> purchase`로 분해하고, 단계별로 어떤 대상에서 손실이 큰지 비교 가능하게 만들었습니다. 또한 원인 가설을 가격/콘텐츠 이슈와 결제/배송 UX 이슈로 나눠 액션 가능한 분석 구조로 설계했습니다.
+## Slide 2. Business Problem Definition
+The problem was not simply that conversion rates were low; there was no framework to explain why drop-off occurred. In practice, there were periods where traffic increased but purchases did not follow, and the variance across categories and brands was significant. I decomposed the funnel into `view → cart → purchase` and made it possible to compare which segments had the largest losses at each stage. I also split causal hypotheses into price/content issues versus payment/shipping UX issues to design an actionable analysis structure.
 
-## 슬라이드 3. 목표와 KPI
-목표는 세 가지입니다. 파이프라인 자동화, KPI 표준화, 대시보드 기반 액션 연결입니다. KPI는 `view_to_cart_rate`, `cart_to_purchase_rate`, `overall_conversion_rate`로 고정해 해석 일관성을 맞췄습니다.
+## Slide 3. Goals and KPIs
+There are three goals: pipeline automation, KPI standardisation, and connecting analysis results to executable actions. The KPIs are fixed as `view_to_cart_rate`, `cart_to_purchase_rate`, and `overall_conversion_rate` to ensure consistent interpretation.
 
-## 슬라이드 4. 아키텍처
-아키텍처는 Kaggle 수집, GCS 저장, Spark 변환, BigQuery 적재, dbt 모델링, Looker Studio 시각화 순서입니다. 저장/처리/분석 계층을 분리해 운영성과 확장성을 동시에 확보했습니다.
+## Slide 4. Architecture
+The architecture flows through: Kaggle ingestion, GCS storage, Spark transformation, BigQuery loading, dbt modelling, and Looker Studio visualisation. Separating the storage, processing, and analytics layers achieves both operability and scalability.
 
-## 슬라이드 5. 인프라 구현
-인프라는 Terraform으로 코드화했습니다. GCS bucket과 BigQuery dataset을 프로비저닝하여 환경 재현성을 확보했습니다. 수동 구성 대비 세팅 오차를 줄이고 초기 구축 시간을 단축했습니다.
+## Slide 5. Infrastructure Implementation
+Infrastructure is codified with Terraform. Provisioning the GCS bucket and BigQuery dataset ensures environment reproducibility, reduces setup errors compared to manual configuration, and shortens initial build time.
 
-## 슬라이드 6. Airflow DAG 구조
-Airflow는 역할별로 3개 DAG로 나눴습니다. ingest, transform, modeling 단계를 분리해 실패 지점을 빠르게 식별할 수 있게 했고, 운영 중 장애 대응 속도를 높였습니다.
+## Slide 6. Airflow DAG Structure
+Airflow is split into 3 DAGs by responsibility: ingest, transform, and modelling. Separating the stages allows fast identification of failure points and improves incident response speed during operations.
 
-## 슬라이드 7. Ingest DAG
-`clickstream_ingest_raw`는 Kaggle 다운로드, 압축 해제, GCS 업로드를 수행합니다. 반복 작업을 자동화해 원천 데이터 유입 과정을 표준화했습니다.
+## Slide 7. Ingest DAG
+`clickstream_ingest_raw` performs Kaggle download, unzip, and GCS upload. Automating these repetitive tasks standardises the source data ingestion process.
 
-## 슬라이드 8. Spark Transform DAG
-`clickstream_spark_transform`은 Spark job 파일을 GCS에 올린 뒤 Dataproc에서 10월/11월 데이터를 처리합니다. Spark 리소스 파라미터를 지정해 안정적으로 변환이 수행되도록 구성했습니다.
+## Slide 8. Spark Transform DAG
+`clickstream_spark_transform` uploads the Spark job file to GCS and then processes October and November data on Dataproc. Specifying Spark resource parameters ensures stable transformation execution.
 
-## 슬라이드 9. Spark 로직 핵심
-Spark job은 먼저 Bronze 문자열 스키마로 읽고 타입 캐스팅을 수행합니다. 캐스팅 실패는 `failure_reason`으로 라벨링해 추적 가능하게 만들었습니다. 유효 데이터는 Processed 스키마로 강제해 데이터 타입 안정성을 보장했습니다.
+## Slide 9. Core Spark Logic
+The Spark job first reads with a Bronze string schema and then performs type casting. Cast failures are labelled with `failure_reason` to make them traceable. Valid data is enforced against the Processed schema to guarantee data type stability.
 
-## 슬라이드 10. 저장 전략
-결과는 Parquet(Snappy)로 저장하고 `event_month`, `event_date` 파티션을 사용합니다. 재실행 시 대상 월 파티션을 정리한 뒤 append로 적재해 중복 적재 위험을 줄였습니다.
+## Slide 10. Storage Strategy
+Results are stored as Parquet (Snappy) and partitioned by `event_month` and `event_date`. On re-run the target month partition is deleted before appending, which reduces the risk of duplicate loading.
 
-## 슬라이드 11. BigQuery 구현
-BigQuery는 외부테이블과 파티션/클러스터 테이블을 SQL 3종으로 생성합니다. 이 구조를 통해 원본 접근성과 분석 성능을 함께 확보했습니다.
+## Slide 11. BigQuery Implementation
+BigQuery uses three SQL files to create an external table, a partitioned table, and a partitioned + clustered table. This structure provides both raw accessibility and analytical query performance.
 
-## 슬라이드 12. dbt Staging
-`stg_clickstream`에서는 이벤트 타입 필터링, 필수 키 null 제거, 카테고리 대분류 파생을 수행합니다. 이 단계로 원본 로그를 분석 가능한 표준 형태로 맞췄습니다.
+## Slide 12. dbt Staging
+`stg_clickstream` performs event-type filtering, null removal for key columns, and derives `category_main` from `category_code`. This step normalises raw logs into a standard analytical form.
 
-## 슬라이드 13. dbt Mart
-`fct_funnel_events`에서 세션+상품 단위 퍼널 도달 플래그를 만들고, `mart_funnel`과 `mart_daily_funnel_kpi`에서 BI용 집계를 제공합니다. 결과적으로 동일 정의로 월/일 전환률을 일관되게 비교할 수 있습니다.
+## Slide 13. dbt Mart
+`fct_funnel_events` creates per-session + per-product funnel reach flags, while `mart_funnel` and `mart_daily_funnel_kpi` provide BI-ready aggregations. As a result, monthly and daily conversion rates can be compared consistently using the same definition.
 
-## 슬라이드 14. 품질/테스트
-품질은 dbt test와 코드 테스트로 검증합니다. unit/integration은 구현했고, load/resilience/performance는 TODO로 관리하고 있습니다. 구현 범위와 미구현 범위를 분리해 운영 리스크를 투명하게 관리합니다.
+## Slide 14. Quality / Testing
+Quality is validated through dbt tests and code tests. unit/integration tests are implemented; load/resilience/performance are managed as TODO. By separating implemented from not-yet-implemented scope, operational risk is managed transparently.
 
-## 슬라이드 15. 대시보드와 인사이트
-Looker Studio에서는 전환 추이, 카테고리/브랜드 비교, 단계 분포를 함께 봅니다. 예를 들어 `view_to_cart_rate`가 낮으면 상세페이지나 가격 경쟁력 이슈를 우선 의심하고, `cart_to_purchase_rate`가 낮으면 결제 UX나 배송비 정책 이슈를 먼저 점검합니다. 특정 날짜 구간 급락은 캠페인 유입 품질, 재고, 운영 장애 로그와 함께 원인 분석합니다. 이렇게 인사이트를 바로 실행 과제와 연결해 개선 우선순위를 정하도록 구성했습니다.
+## Slide 15. Dashboard and Insights
+Looker Studio shows conversion trends, category/brand comparisons, and stage distributions together. For example, if `view_to_cart_rate` is low, product detail pages or price competitiveness are the first suspects; if `cart_to_purchase_rate` is low, payment UX or shipping fee policies are checked first. Sharp drops on specific dates are cross-referenced with campaign quality, inventory, and operational incident logs for root-cause analysis. Insights are mapped directly to action items to set improvement priorities.
 
-## 슬라이드 16. 한계와 개선 계획
-현재는 배치 중심이라 실시간 대응이 제한됩니다. 단기적으로 모니터링과 테스트를 강화하고, 중기에는 세그먼트 분석, 장기에는 스트리밍 기반으로 확장할 계획입니다.
+## Slide 16. Limitations and Improvement Plan
+The current batch-centric design limits near-real-time response. Short-term: strengthen monitoring and testing. Medium-term: add segment/cohort/retention analysis models. Long-term: evaluate migration to a streaming ingestion and processing architecture.

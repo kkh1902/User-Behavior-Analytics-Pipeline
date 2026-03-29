@@ -27,11 +27,11 @@ def slack_alert(context):
     log_url = task.log_url
 
     message = (
-        f":red_circle: *DAG 실패 알림*\n"
+        f":red_circle: *DAG Failure Alert*\n"
         f"• *DAG*: `{dag_id}`\n"
         f"• *Task*: `{task.task_id}`\n"
-        f"• *실행 시각*: {context.get('execution_date')}\n"
-        f"• *로그*: <{log_url}|여기 클릭>"
+        f"• *Execution time*: {context.get('execution_date')}\n"
+        f"• *Logs*: <{log_url}|Click here>"
     )
     requests.post(SLACK_WEBHOOK_URL, json={"text": message}, timeout=10)
 
@@ -49,9 +49,9 @@ with DAG(
     schedule=None,
     catchup=False,
     tags=["clickstream", "bigquery", "dbt"],
-    description="BigQuery DDL → dbt 모델링",
+    description="BigQuery DDL → dbt modelling",
 ) as dag:
-    # 1. BigQuery DDL 실행 (external/partitioned/clustered 테이블 생성)
+    # 1. Run BigQuery DDL (create external / partitioned / clustered tables)
     def create_bigquery_tables() -> None:
         from google.cloud import bigquery
 
@@ -80,19 +80,19 @@ with DAG(
         python_callable=create_bigquery_tables,
     )
 
-    # 2. dbt 모델 실행 (stg → fct → mart)
+    # 2. Run dbt models (stg → fct → mart)
     dbt_run = BashOperator(
         task_id="dbt_run",
         bash_command=f"cd {DBT_DIR} && dbt run --profiles-dir . --target-path /tmp/dbt-target --log-path /tmp/dbt-logs",
     )
 
-    # 3. dbt 데이터 품질 테스트
+    # 3. Run dbt data quality tests
     dbt_test = BashOperator(
         task_id="dbt_test",
         bash_command=f"cd {DBT_DIR} && dbt test --profiles-dir . --target-path /tmp/dbt-target --log-path /tmp/dbt-logs",
     )
 
-    # 의존성
+    # Dependencies
     (
         create_bq_tables
         >> dbt_run

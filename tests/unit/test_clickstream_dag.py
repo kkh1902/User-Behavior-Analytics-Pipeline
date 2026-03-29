@@ -10,23 +10,23 @@ pytestmark = pytest.mark.unit
 
 
 def _load_dagbag() -> DagBag:
-    # DAG 로딩은 모든 테스트의 공통 진입점으로 재사용한다.
+    # DAG loading is the common entry point reused across all tests.
     return DagBag(dag_folder="airflow/dags", include_examples=False)
 
 
 def _get_loaded_dag(dag_id: str):
-    # get_dag()는 환경에 따라 메타DB 조회를 유발할 수 있어, 메모리 로드 결과를 직접 사용한다.
+    # get_dag() may trigger a meta-DB lookup depending on the environment, so use in-memory load results directly.
     return _load_dagbag().dags.get(dag_id)
 
 
 def test_all_dag_files_import_cleanly() -> None:
-    # import 에러가 있으면 스케줄러에서 DAG 자체가 보이지 않기 때문에 최우선으로 막는다.
+    # Import errors make DAGs invisible to the scheduler, so catching them is the top priority.
     dagbag = _load_dagbag()
     assert dagbag.import_errors == {}, f"Import errors: {dagbag.import_errors}"
 
 
 def test_expected_dags_exist_and_have_base_config() -> None:
-    # CI에서 운영 핵심 DAG(변환/모델링)만 기본 설정을 검증한다.
+    # In CI, validate base config only for the core operational DAGs (transform/modelling).
     dagbag = _load_dagbag()
     expected_dags = {
         "clickstream_spark_transform",
@@ -44,7 +44,7 @@ def test_expected_dags_exist_and_have_base_config() -> None:
 
 
 def test_spark_transform_dag_tasks_and_args() -> None:
-    # 월별 Spark 변환 task가 병렬로 독립 실행 가능하도록 upstream이 없어야 한다.
+    # Monthly Spark transform tasks must have no upstream so they can run independently in parallel.
     dag = _get_loaded_dag("clickstream_spark_transform")
     assert dag is not None
 
@@ -66,7 +66,7 @@ def test_spark_transform_dag_tasks_and_args() -> None:
 
 
 def test_pipeline_dag_tasks_and_dependencies() -> None:
-    # 파이프라인 DAG은 BQ DDL 선행 후 dbt run/test 순으로 이어져야 한다.
+    # The pipeline DAG must run BQ DDL first, then dbt run, then dbt test in order.
     dag = _get_loaded_dag("clickstream_pipeline")
     assert dag is not None
 

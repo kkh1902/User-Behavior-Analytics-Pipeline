@@ -6,29 +6,29 @@ sources:
     schema: clickstream
     tables:
       - name: clickstream_partitioned_clustered
-        description: "파티션+클러스터 적용된 클릭스트림 원본 이벤트 테이블"
+        description: "Partitioned + clustered clickstream raw event table"
         columns:
           - name: event_time
-            description: "이벤트 발생 시각"
+            description: "Event timestamp"
           - name: event_type
-            description: "이벤트 유형 (view, cart, purchase)"
+            description: "Event type (view, cart, purchase)"
           - name: product_id
-            description: "상품 ID"
+            description: "Product ID"
           - name: category_id
-            description: "카테고리 ID"
+            description: "Category ID"
           - name: category_code
-            description: "카테고리 코드 (예: electronics.smartphone)"
+            description: "Category code (e.g. electronics.smartphone)"
           - name: brand
-            description: "브랜드명"
+            description: "Brand name"
           - name: price
-            description: "상품 가격"
+            description: "Product price"
           - name: user_id
-            description: "사용자 ID"
+            description: "User ID"
           - name: user_session
-            description: "사용자 세션 ID"
+            description: "User session ID"
           - name: event_date
-            description: "이벤트 날짜 (파티션 컬럼)"
+            description: "Event date (partition column)"
           - name: event_month
-            description: "이벤트 월 (파티션 컬럼)"
+            description: "Event month (partition column)"
           - name: event_month_date
-            description: "이벤트 월 시작일 (DATE)"
+            description: "First day of the event month (DATE)"

@@ -1,7 +1,7 @@
--- 원본 이벤트 데이터 정제
--- - NULL 제거
--- - event_type을 view / cart / purchase 3가지로 필터
--- - category_code에서 대분류 추출
+-- Clean raw event data
+-- - Remove NULLs
+-- - Filter event_type to view / cart / purchase only
+-- - Extract top-level category from category_code
 
 with source as (
     select * from {{ source('clickstream_raw', 'clickstream_partitioned_clustered') }}
@@ -14,7 +14,7 @@ cleaned as (
         cast(product_id as int64) as product_id,
         cast(category_id as int64) as category_id,
         cast(category_code as string) as category_code,
-        -- 카테고리 대분류 추출 (예: 'electronics.smartphone' → 'electronics')
+        -- Extract top-level category (e.g. 'electronics.smartphone' → 'electronics')
         cast(split(category_code, '.')[safe_offset(0)] as string) as category_main,
         cast(brand as string) as brand,
         cast(price as float64) as price,

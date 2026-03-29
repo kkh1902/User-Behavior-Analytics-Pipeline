@@ -1,5 +1,5 @@
--- 세션 + 상품 단위로 퍼널 단계 플래그 생성
--- 각 (user_session, product_id) 조합에서 어디까지 진행했는지 기록
+-- Generate funnel stage flags at session + product level
+-- Record how far each (user_session, product_id) combination progressed
 
 with base as (
     select
@@ -12,7 +12,7 @@ with base as (
         event_date,
         event_month,
         event_month_date,
-        -- 각 단계 도달 여부
+        -- Flag whether each stage was reached
         max(case when event_type = 'view'     then 1 else 0 end) as has_view,
         max(case when event_type = 'cart'     then 1 else 0 end) as has_cart,
         max(case when event_type = 'purchase' then 1 else 0 end) as has_purchase
@@ -36,7 +36,7 @@ select
     cast(has_view as int64) as has_view,
     cast(has_cart as int64) as has_cart,
     cast(has_purchase as int64) as has_purchase,
-    -- 퍼널 단계 레이블
+    -- Funnel stage label
     cast(
         case
             when has_purchase = 1 then 'purchase'

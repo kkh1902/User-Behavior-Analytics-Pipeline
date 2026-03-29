@@ -23,7 +23,7 @@ def spark() -> SparkSession:
 
 
 def test_sample_pipeline_flow_end_to_end(spark: SparkSession) -> None:
-    # 샘플 입력 기준으로 cast -> processed -> partition 컬럼 생성까지 한 흐름으로 검증한다.
+    # Validate the full flow from cast -> processed -> partition column derivation using sample input.
     rows = [
         {
             "event_time": "2019-10-01 00:00:00 UTC",

@@ -7,7 +7,7 @@ pytestmark = [pytest.mark.load, pytest.mark.skip(reason="TODO: load tests are do
 
 def test_medium_volume_load_todo() -> None:
     # TODO:
-    # 1) 중간 규모 샘플(예: 100k~1M rows) 준비
-    # 2) 처리량(rows/sec)과 실패율 측정
-    # 3) 기준치 미달 시 경고/실패 처리
+    # 1) Prepare a medium-scale sample (e.g. 100k–1M rows)
+    # 2) Measure throughput (rows/sec) and failure rate
+    # 3) Warn/fail if below threshold
     assert True

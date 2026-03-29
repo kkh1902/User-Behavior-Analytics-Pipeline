@@ -22,7 +22,7 @@ _SPARK_PROPERTIES = {
     "spark.network.timeout": "300s",
     "spark.executor.heartbeatInterval": "60s",
     "spark.dynamicAllocation.enabled": "false",
-    # 4 worker 클러스터를 활용하도록 executor 병렬도를 확장
+    # Scale executor parallelism to utilise the 4-worker cluster
     "spark.executor.instances": "4",
     "spark.executor.cores": "2",
     "spark.executor.memory": "4g",
@@ -40,11 +40,11 @@ def slack_alert(context):
     log_url = task.log_url
 
     message = (
-        f":red_circle: *DAG 실패 알림*\n"
+        f":red_circle: *DAG Failure Alert*\n"
         f"• *DAG*: `{dag_id}`\n"
         f"• *Task*: `{task.task_id}`\n"
-        f"• *실행 시각*: {context.get('execution_date')}\n"
-        f"• *로그*: <{log_url}|여기 클릭>"
+        f"• *Execution time*: {context.get('execution_date')}\n"
+        f"• *Logs*: <{log_url}|Click here>"
     )
     requests.post(SLACK_WEBHOOK_URL, json={"text": message}, timeout=10)
 
@@ -52,14 +52,14 @@ def slack_alert(context):
 default_args = {
     "owner": "airflow",
     "start_date": datetime(2024, 1, 1),
-    # 비용 통제를 위해 실패 시 자동 재시도는 끔
+    # Disable automatic retries on failure for cost control
     "retries": 0,
     "on_failure_callback": slack_alert,
 }
 
 
 def upload_spark_job_to_gcs() -> None:
-    """Dataproc 클러스터에서 실행할 pyspark 파일을 GCS에 업로드합니다."""
+    """Upload the PySpark job file to GCS so Dataproc can execute it."""
     client = storage.Client.from_service_account_json(GCP_CREDS_PATH, project=GCP_PROJECT_ID)
     bucket = client.bucket(GCP_BUCKET)
     blob = bucket.blob("code/csv_parquet_job.py")
@@ -71,10 +71,10 @@ with DAG(
     default_args=default_args,
     schedule=None,
     catchup=False,
-    # 중복 트리거로 여러 Dataproc 잡이 동시에 뜨지 않도록 제한
+    # Prevent multiple simultaneous Dataproc jobs from duplicate triggers
     max_active_runs=1,
     tags=["clickstream", "spark", "transform", "dataproc"],
-    description="Dataproc Cluster Spark CSV -> Parquet 변환",
+    description="Dataproc Cluster Spark CSV -> Parquet transformation",
 ) as dag:
     upload_job = PythonOperator(
         task_id="upload_spark_job_to_gcs",
@@ -117,5 +117,5 @@ with DAG(
         gcp_conn_id="google_cloud_default",
     )
 
-    # 월별 잡은 순차 실행으로 리소스 경합을 줄입니다.
+    # Run monthly jobs sequentially to reduce resource contention.
     upload_job >> spark_oct >> spark_nov

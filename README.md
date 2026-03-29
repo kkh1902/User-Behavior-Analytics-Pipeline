@@ -1,181 +1,272 @@
-## 개요
-이 프로젝트는 이커머스 클릭스트림 데이터를 분석하여 비즈니스 인사이트를 도출하는 데이터 엔지니어링 파이프라인을 구축합니다. 이벤트 로그를 수집·처리·분석하여 구매 전환 패턴, 상품 관심도, 사용자 여정을 파악하고 마케팅 및 UX 개선을 지원합니다.
+# Clickstream Conversion Funnel Pipeline
 
-## 해결하려는 문제
-이커머스 비즈니스에서 "사람들이 상품을 보기는 하는데 왜 안 사지?"라는 핵심 질문에 답합니다.
+An end-to-end data engineering pipeline that ingests e-commerce clickstream events, transforms them with Apache Spark on Dataproc, loads them into BigQuery, models them with dbt, and visualises conversion-funnel KPIs in Looker Studio.
 
-**view → cart → purchase** 전환 퍼널을 분석하여:
-- 카테고리/브랜드별 전환율 파악 → 마케팅 예산 집중 대상 식별
-- 장바구니 이탈 상품 파악 → 리타겟팅 대상 선정
-- 월별 전환율 추이 → 프로모션 효과 측정
+---
 
-## 📌 프로젝트 목표
-현대적인 클라우드 및 오픈소스 도구를 활용하여 클릭스트림 분석을 위한 엔드투엔드 파이프라인을 구축합니다.
+## Problem Description
 
-### ✅ 기술적 목표
-- **Terraform**: GCP 리소스 자동 프로비저닝
-- **Airflow**: 데이터 수집 및 처리 워크플로우 오케스트레이션
-- **Apache Spark**: 대용량 데이터셋 처리 및 변환 (SparkSubmitOperator)
-- **BigQuery**: 데이터 웨어하우스 적재
-- **dbt**: 전환 퍼널 데이터 모델링 및 변환
-- **Looker Studio**: 대시보드 시각화
+E-commerce businesses often observe that traffic grows while purchase conversion does not scale proportionally. The core question this project answers is:
 
-## 기술 스택
-| 영역 | 기술 |
-|------|------|
-| 클라우드 | Google Cloud Platform (GCP) |
-| 인프라 | Terraform |
-| 오케스트레이션 | Apache Airflow |
-| 데이터 처리 | Apache Spark (Standalone 클러스터) |
-| 데이터 웨어하우스 | BigQuery |
-| 데이터 모델링 | dbt (dbt-bigquery) |
-| 스토리지 | Google Cloud Storage |
-| 시각화 | Looker Studio |
+> **"People view products — why aren't they buying?"**
 
-## 파이프라인 흐름
-```
-Kaggle API → GCS (raw/kaggle/) → Spark 변환 → GCS (processed/) → BigQuery → dbt → Looker Studio
-```
+By decomposing the user journey into a **view → cart → purchase** funnel, we can:
 
-## dbt 모델 구조
-전환 퍼널 분석에 초점을 맞춘 3단계 모델링:
+- Identify which categories and brands have the lowest conversion rates → prioritise marketing spend
+- Find products with high cart-abandonment rates → create retargeting audiences
+- Track monthly conversion trends → measure the effect of promotions
+
+Without a reliable, consistently-defined pipeline these questions are impossible to answer at scale. Raw event logs have quality issues (bad types, nulls, mixed UTC formatting) that must be handled before any analysis.
+
+---
+
+## Architecture
 
 ```
-sources
-  └── clickstream_partitioned_clustered   (BigQuery 원본)
-
-staging
-  └── stg_clickstream                     (정제: NULL 제거, event_type 필터)
-
-marts
-  ├── fct_funnel_events                   (세션+상품 단위 view/cart/purchase 도달 여부)
-  └── mart_funnel                         (카테고리/브랜드/월별 전환율 집계 → Looker Studio)
+Kaggle API
+    ↓  (clickstream_ingest_raw DAG)
+GCS  raw/kaggle/
+    ↓  (clickstream_spark_transform DAG — Dataproc)
+GCS  processed/clickstream/  (Parquet, Snappy, partitioned)
+    ↓  (clickstream_pipeline DAG)
+BigQuery  external table  →  partitioned + clustered table
+    ↓
+dbt  stg_clickstream  →  fct_funnel_events  →  mart_funnel / mart_daily_funnel_kpi
+    ↓
+Looker Studio Dashboard
 ```
 
-## 폴더 구조
-```
-clickstream-pipeline/
-├── airflow/             # Airflow DAG 및 Docker 설정
-│   ├── Dockerfile
-│   ├── docker-compose.yaml
-│   ├── .env.example
-│   └── dags/
-│       └── clickstream_pipeline.py
-├── spark/               # Spark 작업
-│   ├── Dockerfile.spark
-│   └── jobs/
-│       └── csv_parquet_job.py
-├── BigQuery/            # BigQuery 인프라 SQL (외부 테이블, 파티션 테이블 생성)
-├── dbt/                 # dbt 데이터 모델링
-│   ├── dbt_project.yml
-│   ├── profiles.yml
-│   └── models/
-│       ├── staging/
-│       │   ├── sources.yml
-│       │   ├── stg_clickstream.sql
-│       │   └── schema.yml
-│       └── marts/
-│           ├── fct_funnel_events.sql
-│           ├── mart_funnel.sql
-│           └── schema.yml
-├── data/                # 원본 데이터
-├── terraform/           # 인프라 코드
-└── images/
-```
+![Architecture](images/architecture.png)
 
-## 실행 방법
+---
 
-### 0) 사전 준비
-```bash
-cd airflow
-cp .env.example .env
-# .env 파일에 Kaggle API 키 및 GCP 설정 입력
-```
+## Tech Stack
 
-### 1) 인프라 프로비저닝 (Terraform)
+| Layer | Technology |
+|-------|-----------|
+| Cloud | Google Cloud Platform (GCP) |
+| Infrastructure as Code | Terraform |
+| Orchestration | Apache Airflow 2.9 |
+| Data Processing | Apache Spark 3.5 (Dataproc) |
+| Data Warehouse | BigQuery |
+| Data Modelling | dbt (dbt-bigquery 1.8) |
+| Storage | Google Cloud Storage |
+| Visualisation | Looker Studio |
+| CI | GitHub Actions |
+
+---
+
+## Cloud & Infrastructure (IaC)
+
+All GCP resources are provisioned with **Terraform**:
+
+- **GCS bucket** — versioning, lifecycle rules, uniform bucket-level access
+- **BigQuery dataset** — `clickstream` dataset in the project
+
 ```bash
 cd terraform
 terraform init
 terraform plan
 terraform apply
 ```
-- 서비스 계정 키를 `cred/clickstream-sa.json`에 배치합니다.
-- `terraform/variables.tf` 또는 `*.tfvars`에서 변수를 조정하세요.
 
-### 2) Airflow + Spark 실행
-```bash
-cd airflow
-docker compose up airflow-init   # 최초 1회: DB 초기화 및 계정 생성
-docker compose up -d             # 전체 스택 기동
+Place the GCP service-account key at `cred/clickstream-sa.json` before running Terraform or Airflow.
+
+---
+
+## Data Ingestion — Airflow Batch Pipeline
+
+Three Airflow DAGs handle the end-to-end pipeline. Each DAG sends a **Slack webhook** alert on failure.
+
+### DAG 1 — `clickstream_ingest_raw`
+Downloads the [Kaggle dataset](https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store), unzips it, and uploads the CSV files to `gs://<bucket>/raw/kaggle/`.
+
+| Task | Operator | Description |
+|------|----------|-------------|
+| `download_kaggle_dataset` | BashOperator | `kaggle datasets download …` |
+| `unzip_dataset` | PythonOperator | Extracts zip to `/tmp/clickstream_raw/extracted/` |
+| `upload_csvs_to_gcs` | PythonOperator | Uploads every `.csv` to GCS `raw/kaggle/` |
+
+### DAG 2 — `clickstream_spark_transform`
+Uploads the PySpark job to GCS, then submits two sequential Dataproc jobs (October and November).
+
+| Task | Description |
+|------|-------------|
+| `upload_spark_job_to_gcs` | Copies `csv_parquet_job.py` → `gs://<bucket>/code/` |
+| `spark_csv_to_parquet_oct` | Dataproc job for 2019-10 data |
+| `spark_csv_to_parquet_nov` | Dataproc job for 2019-11 data |
+
+`max_active_runs=1` prevents concurrent Dataproc clusters from racing.
+
+### DAG 3 — `clickstream_pipeline`
+Creates BigQuery tables and runs dbt.
+
+| Task | Description |
+|------|-------------|
+| `create_bigquery_tables` | Runs three SQL files via BigQuery Python client |
+| `dbt_run` | `dbt run` for all models |
+| `dbt_test` | `dbt test` for data quality checks |
+
+---
+
+## Spark Transformation Logic
+
+`spark/jobs/csv_parquet_job.py` implements a **Bronze → Processed** quality pipeline:
+
+1. **Bronze load** — read raw CSV with an all-string schema to avoid silent data loss.
+2. **Type casting** — cast `event_time`, `product_id`, `category_id`, `price`, `user_id` to their target types; keep original `*_raw` columns alongside `*_typed` results.
+3. **Cast-failure detection** — rows where a raw value is present but the typed value is NULL are flagged; `failure_reason` lists the failing column names.
+4. **Processed filter** — keep only rows where `event_time`, `user_id`, and `product_id` are all valid.
+5. **Schema enforcement** — re-apply the declared `processed_schema()` to prevent schema drift.
+6. **Partition columns** — derive `event_date`, `event_month`, `event_month_date` from UTC `event_time`.
+7. **Idempotent write** — delete the target `event_month` partition, then append-write Parquet (Snappy compression), partitioned by `event_month` / `event_date`.
+
+---
+
+## Data Warehouse — BigQuery
+
+Three SQL files create the BigQuery table hierarchy:
+
+| SQL File | Purpose |
+|----------|---------|
+| `create_external_table.sql` | External table pointing to GCS Parquet files |
+| `create_partitioned_table.sql` | Partitioned table (by `event_date`) |
+| `create_partitioned_clustered_table.sql` | Partitioned by `event_date` **+ clustered** by `event_type`, `category_code`, `brand` |
+
+The **clustered table** is the primary analytical source; clustering on the most-queried filter columns significantly reduces scan bytes and cost.
+
+---
+
+## Transformations — dbt Models
+
+```
+sources
+  └── clickstream_partitioned_clustered   (BigQuery raw source)
+
+staging
+  └── stg_clickstream                     (clean: filter NULLs, filter event_type, extract category_main)
+
+marts
+  ├── fct_funnel_events                   (session + product-level view/cart/purchase flags)
+  ├── mart_funnel                         (category/brand/month conversion rates — Looker Studio)
+  └── mart_daily_funnel_kpi               (daily KPI aggregation — monitoring)
 ```
 
-| 서비스 | URL |
-|--------|-----|
+### Conversion KPIs (consistent-population definition)
+
+| Metric | Formula |
+|--------|---------|
+| `view_to_cart_rate` | `cart_sessions / view_sessions × 100` |
+| `cart_to_purchase_rate` | `cart_to_purchase_sessions / cart_sessions × 100` |
+| `overall_conversion_rate` | `view_to_purchase_sessions / view_sessions × 100` |
+
+Numerator and denominator always use the **same cohort** so rates stay in 0–100%.
+
+dbt contracts (`enforced: true`) and tests (`not_null`, `accepted_values`) guard schema and data quality.
+
+---
+
+## Dashboard — Looker Studio
+
+Connect Looker Studio to the `clickstream_dbt` BigQuery dataset.
+
+### Tile 1 — `mart_funnel` (monthly/category/brand conversion comparison)
+- Time-series of `view_to_cart_rate`, `cart_to_purchase_rate`, `overall_conversion_rate`
+- Bar chart of conversion rates by `category_main` and `brand`
+
+![mart_funnel](assets/mart_funnel.png)
+
+### Tile 2 — `mart_daily_funnel_kpi` (daily KPI monitoring)
+- Daily conversion rate trend
+- Daily session volume trend (`view_sessions`, `cart_sessions`)
+
+![mart_daily_funnel_kpi](assets/mart_daily_funnel_kpi.png)
+
+### Supplementary — `fct_funnel_events` (session-level funnel diagnosis)
+- `funnel_stage` distribution (donut / bar)
+- Category-level stacked bar + detail table
+
+![fct_funnel_events](assets/fct_funnel_events.png)
+
+---
+
+## Reproducibility — Step-by-Step
+
+### Prerequisites
+- GCP project with billing enabled
+- Service-account JSON key at `cred/clickstream-sa.json` (roles: Storage Admin, BigQuery Admin, Dataproc Admin)
+- Kaggle API credentials
+- Docker & Docker Compose
+- Terraform ≥ 1.5
+
+### 0) Configure environment
+```bash
+cd airflow
+cp .env.example .env
+# Fill in KAGGLE_USERNAME, KAGGLE_KEY, GCP_PROJECT_ID, GCP_BUCKET_NAME, SLACK_WEBHOOK_URL
+```
+
+### 1) Provision infrastructure (Terraform)
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+### 2) Start Airflow + Spark
+```bash
+cd airflow
+docker compose up airflow-init   # first run only: DB init and account creation
+docker compose up -d
+```
+
+| Service | URL |
+|---------|-----|
 | Airflow UI | http://localhost:8080 (admin / admin) |
 | Spark Master UI | http://localhost:8081 |
 
-### 3) DAG 실행
-- Airflow UI에서 `clickstream_pipeline` DAG을 활성화하고 **Trigger DAG** 실행
-- 실행 순서: Kaggle 다운로드 → GCS 업로드 → Spark 변환 (10월, 11월 병렬)
+### 3) Run the pipeline DAGs (in order)
 
-### 4) BigQuery 테이블 생성
-`BigQuery/` 폴더의 SQL을 순서대로 실행합니다:
-```
-1. create_external_table.sql
-2. created_partitioned_clustered_table.sql
-```
+1. Trigger `clickstream_ingest_raw` — downloads and uploads raw CSVs to GCS
+2. Trigger `clickstream_spark_transform` — converts CSVs to Parquet on Dataproc
+3. Trigger `clickstream_pipeline` — creates BigQuery tables and runs dbt
 
-### 5) dbt 실행
-```bash
-cd dbt
-source .venv/bin/activate
-dbt run --profiles-dir .   # 모델 실행
-dbt test --profiles-dir .  # 데이터 품질 테스트
-```
+### 4) Verify BigQuery tables
+After step 3 the following tables should exist in the `clickstream` dataset:
+- `clickstream_external`
+- `clickstream_partitioned`
+- `clickstream_partitioned_clustered`
 
-| 생성 테이블 (clickstream_dbt 데이터셋) | 설명 |
-|--------------------------------------|------|
-| `stg_clickstream` | 정제된 이벤트 뷰 |
-| `fct_funnel_events` | 세션별 퍼널 도달 여부 |
-| `mart_funnel` | 전환율 집계 (Looker Studio 연결용) |
+And in `clickstream_dbt`:
+- `stg_clickstream`
+- `fct_funnel_events`
+- `mart_funnel`
+- `mart_daily_funnel_kpi`
 
-### 6) 시각화 (Looker Studio)
-- BigQuery `clickstream_dbt` 데이터셋의 `mart_funnel`, `mart_daily_funnel_kpi`, `fct_funnel_events`를 Looker Studio에 연결합니다.
+### 5) Connect Looker Studio
+Open [Looker Studio](https://lookerstudio.google.com), add a BigQuery data source, and select the tables above.
 
-## 아키텍처
-![아키텍처](images/architecture.png)
+---
 
-## Looker Studio 데이터 시각화
-### 1) `mart_funnel` (월/카테고리/브랜드 전환율 비교)
-- 추천 차트: 월별 전환율 시계열, 카테고리/브랜드 전환율 막대 차트
-![mart_funnel](assets/mart_funnel.png)
+## Testing & CI
 
-### 2) `mart_daily_funnel_kpi` (일별 KPI 모니터링)
-- 추천 차트: 일별 전환율 추이, 일별 세션 볼륨 추이
-![mart_daily_funnel_kpi](assets/mart_daily_funnel_kpi.png)
+| Suite | Tool | Status |
+|-------|------|--------|
+| Unit — DAG structure | pytest + Airflow | ✅ implemented |
+| Unit — Spark functions | pytest + PySpark | ✅ implemented |
+| Integration — Spark E2E | pytest + PySpark | ✅ implemented |
+| dbt tests | dbt test | ✅ implemented |
+| Load tests | pytest | ⏳ TODO (skipped) |
+| Resilience tests | pytest | ⏳ TODO (skipped) |
+| Performance benchmarks | pytest | ⏳ TODO (skipped) |
 
-### 3) `fct_funnel_events` (세션+상품 단위 퍼널 진단)
-- 추천 차트: `funnel_stage` 분포 도넛/막대, 카테고리별 단계 누적 막대
-![fct_funnel_events](assets/fct_funnel_events.png)
+GitHub Actions CI runs lint, Spark unit tests, DAG tests, and integration tests on every push.
 
-## Looker Studio 결과 기반 인사이트
-### 1) `mart_funnel`
-- 차트: 월별 전환율 시계열 (`view_to_cart_rate`, `cart_to_purchase_rate`, `overall_conversion_rate`)
-- 인사이트: 월 단위 추세를 통해 전환율 개선/악화 시점을 파악하고, 프로모션/가격 정책 변경 시점과 비교해 효과를 평가할 수 있습니다.
-- 차트: 카테고리/브랜드 전환율 막대 차트
-- 인사이트: `category_main`과 `brand`별 편차를 비교해 개선 우선순위(상세페이지, 가격, 리뷰 관리)를 정할 수 있습니다.
+---
 
-### 2) `mart_daily_funnel_kpi`
-- 차트: 일별 전환율 추이 시계열
-- 인사이트: 특정 날짜 급등/급락을 빠르게 찾고, 마케팅 집행/장애/재고 이슈와 연결해 원인을 좁힐 수 있습니다.
-- 차트: 일별 세션 볼륨 추이 (`view_sessions`, `cart_sessions`)
-- 인사이트: 유입은 늘었는데 전환이 낮으면 유입 품질 문제, 유입과 전환이 동반 상승하면 캠페인 적합도가 높다고 해석할 수 있습니다.
+## Dataset
 
-### 3) `fct_funnel_events`
-- 차트: `funnel_stage` 분포 도넛/막대
-- 인사이트: 전체 세션이 어느 단계에서 가장 많이 이탈하는지 확인해 병목 구간(view→cart vs cart→purchase)을 명확히 볼 수 있습니다.
-- 차트: 카테고리별 단계 누적 막대 + 상세 테이블 (`has_view`, `has_cart`, `has_purchase`)
-- 인사이트: `purchase` 대비 `cart` 비율이 낮은 카테고리/브랜드를 찾아 결제 UX, 쿠폰, 배송비 정책 개선 대상을 구체화할 수 있습니다.
+[E-Commerce Behavior Data from Multi-Category Store (2019 Oct/Nov)](https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store?select=2019-Oct.csv)
 
-## 참고 자료
-- 데이터셋: [E-commerce Behavior Data (2019 Oct/Nov)](https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store?select=2019-Oct.csv)
+~109M events across view, cart, and purchase event types.

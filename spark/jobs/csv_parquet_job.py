@@ -17,17 +17,17 @@ from pyspark.sql.functions import (
     when,
 )
 
-# 잡 개요
-# 1) 원본 CSV를 Bronze(string) 스키마로 읽는다.
-# 2) 주요 컬럼 타입 캐스팅 + 캐스팅 실패 건수/사유를 산출한다.
-# 3) 유효 행만 Processed 스키마로 정렬해 안정적인 컬럼 타입을 보장한다.
-# 4) event_date / event_month / event_month_date 컬럼을 생성한다.
-# 5) Parquet(Snappy)로 GCS에 저장하고, 필요 시 invalid 데이터를 분리 저장한다.
+# Job overview
+# 1) Read the raw CSV using the Bronze (string) schema.
+# 2) Cast key column types and count/reason cast failures.
+# 3) Keep only valid rows, enforce the Processed schema for stable column types.
+# 4) Derive event_date / event_month / event_month_date columns.
+# 5) Write Parquet (Snappy) to GCS; optionally write invalid rows separately.
 logger = logging.getLogger(__name__)
 
 
 def configure_logging() -> None:
-    # 표준 출력으로 INFO 이상 로그를 남기도록 기본 로거 설정
+    # Configure the root logger to emit INFO and above to stdout
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s - %(message)s",
@@ -35,8 +35,8 @@ def configure_logging() -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    # 실행 시 전달받는 파라미터 정의
-    # 예) --bucket my-bucket --month 10
+    # Define runtime parameters
+    # e.g. --bucket my-bucket --month 10
     parser = argparse.ArgumentParser(description="CSV to Parquet (GCS) job")
     parser.add_argument("--bucket", required=True, help="GCS bucket name")
     parser.add_argument("--month", required=True, choices=["10", "11"], help="Month (10 or 11)")
@@ -53,7 +53,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_spark(app_name: str, gcs_keyfile: str) -> SparkSession:
-    # GCS 커넥터 + 서비스계정 인증을 포함한 SparkSession 생성
+    # Build a SparkSession with GCS connector and service-account authentication
     return (
         SparkSession.builder.appName(app_name)
         .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
@@ -119,7 +119,7 @@ def cast_bronze_df(df_bronze: DataFrame) -> DataFrame:
 
 
 def cast_fail_filter_expr():
-    # 원본값은 있으나 typed 값이 NULL인 경우를 캐스팅 실패로 본다.
+    # A row is considered a cast failure when the raw value is present but the typed value is NULL.
     return (
         (col("event_time_raw").isNotNull() & col("event_time_typed").isNull())
         | (col("product_id_raw").isNotNull() & col("product_id_typed").isNull())
@@ -201,33 +201,33 @@ def add_partition_columns(df_processed: DataFrame) -> DataFrame:
 
 
 def main() -> None:
-    # 1) 로깅/인자/스파크 초기화
+    # 1) Initialize logging, args, and Spark
     configure_logging()
     args = parse_args()
     spark = build_spark(args.app_name, args.gcs_keyfile)
-    # Spark 내부 로그는 WARN 이상만 표시(애플리케이션 로그 가독성 확보)
+    # Suppress Spark internal logs below WARN for cleaner application output
     spark.sparkContext.setLogLevel("WARN")
-    # 원본 event_time이 UTC 기준이므로 세션 타임존을 UTC로 고정
+    # Pin session timezone to UTC since source event_time is UTC
     spark.conf.set("spark.sql.session.timeZone", "UTC")
 
-    # 2) 실행 대상 월/입출력 경로 계산
+    # 2) Compute target month and I/O paths
     month_map = {"10": "Oct", "11": "Nov"}
     month_name = month_map[args.month]
     input_path = f"gs://{args.bucket}/{args.raw_prefix}/2019-{month_name}.csv"
     output_processed = f"gs://{args.bucket}/{args.processed_prefix}"
     output_invalid = f"gs://{args.bucket}/{args.invalid_prefix}" if args.invalid_prefix else ""
 
-    # 파티션 overwrite 시 대상 파티션만 교체되도록 설정
+    # Only replace the target partition on overwrite, leaving other partitions intact
     spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 
-    # Bronze: 원본 CSV를 손실 없이 읽기 위해 전 컬럼을 문자열로 정의
+    # Bronze: all columns as strings to read raw CSV without data loss
     raw_schema = bronze_schema()
 
-    # Processed: 분석/적재에 사용할 정제 스키마를 명시적으로 고정
+    # Processed: explicitly fixed schema used for analysis and loading
     fixed_schema = processed_schema()
 
     logger.info("Reading CSV: %s", input_path)
-    # 3) Bronze 로딩: 문자열 스키마로 CSV를 읽어 원본 손실 최소화
+    # 3) Bronze load: read CSV with string schema to minimise raw data loss
     df_bronze = (
         spark.read.option("header", "true")
         .schema(raw_schema)
@@ -238,9 +238,9 @@ def main() -> None:
     logger.info("Read complete: %s records", f"{total_records:,}")
 
     logger.info("Casting types...")
-    # 4) 타입 캐스팅 + 원본 컬럼 보관
-    # *_raw: 원본 문자열
-    # *_typed: 캐스팅 결과
+    # 4) Type casting + preserve original columns
+    # *_raw:   original string value
+    # *_typed: cast result
     df_bronze_typed = cast_bronze_df(df_bronze).cache()
 
     df_cast_fail = df_bronze_typed.filter(cast_fail_filter_expr())
@@ -251,11 +251,11 @@ def main() -> None:
 
     if output_invalid and cast_fail_count > 0:
         logger.info("Writing invalid rows...")
-        # 실패 컬럼명을 쉼표 구분 문자열로 구성
+        # Build comma-separated string of failed column names
         df_cast_fail_labeled = label_cast_failures(df_cast_fail)
 
         (
-            # 분석에 필요한 원본 컬럼 + failure_reason만 별도 저장
+            # Save only raw columns needed for analysis plus failure_reason
             df_cast_fail_labeled.select(
                 "event_time_raw",
                 "event_type",
@@ -273,48 +273,48 @@ def main() -> None:
         )
 
     logger.info("Building processed dataset...")
-    # Processed 스키마에 맞게 컬럼명/타입을 명시적으로 정렬
-    # 핵심 식별 컬럼(event_time/user_id/product_id)이 유효한 행만 채택
+    # Align column names and types explicitly to the Processed schema
+    # Only rows with valid key identifiers (event_time/user_id/product_id) are kept
     df_processed = build_processed_df(df_bronze_typed).cache()
 
-    # 캐스팅 검증이 끝난 중간 캐시는 메모리 반환
+    # Release the intermediate cache once cast validation is done
     df_bronze_typed.unpersist()
 
-    # 스키마 드리프트 방지를 위해 선언한 processed_schema를 다시 한번 강제 적용
+    # Re-enforce the declared processed_schema to guard against schema drift
     df_processed = enforce_processed_schema(df_processed).select(*[col(field.name) for field in fixed_schema.fields])
 
     processed_count = df_processed.count()
     processed_rate = processed_count / total_records if total_records > 0 else 0.0
     logger.info("Processed records: %s (%.2f%%)", f"{processed_count:,}", processed_rate * 100)
 
-    # 파티션/집계용 날짜 컬럼 생성
+    # Derive date columns for partitioning and aggregation
     df_processed_partitioned = add_partition_columns(df_processed)
 
-    # 재실행 시 중복 적재를 막기 위해 대상 월 파티션만 삭제 후 append 적재
+    # Delete the target month partition before appending to prevent duplicate loads on re-run
     month_key = f"2019-{args.month}"
     partition_path = f"{output_processed}/event_month={month_key}"
     logger.info("Deleting target month partition if exists: %s", partition_path)
     hadoop_conf = spark._jsc.hadoopConfiguration()
     partition_fs_path = spark._jvm.org.apache.hadoop.fs.Path(partition_path)
-    # 경로 스킴(gs://)에 맞는 FileSystem 인스턴스를 사용해야 Wrong FS를 피할 수 있다.
+    # Use the FileSystem instance matching the path scheme (gs://) to avoid Wrong FS errors.
     fs = partition_fs_path.getFileSystem(hadoop_conf)
     if fs.exists(partition_fs_path):
         fs.delete(partition_fs_path, True)
 
     logger.info("Writing processed parquet (append): %s", output_processed)
     (
-        # event_month/event_date 기준 파티셔닝 + snappy 압축 저장
+        # Partition by event_month/event_date and compress with Snappy
         df_processed_partitioned.write.mode("append")
         .partitionBy("event_month", "event_date")
         .option("compression", "snappy")
         .parquet(output_processed)
     )
 
-    # 저장 완료 후 캐시 해제
+    # Release cache after write completes
     df_processed.unpersist()
 
     logger.info("Done")
-    # 5) Spark 리소스 정리
+    # 5) Clean up Spark resources
     spark.stop()
 
 
